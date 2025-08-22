@@ -11,6 +11,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const showUploadForm = document.getElementById('show-upload-form');
     const btnKirimBukti = document.getElementById('btn-kirim-bukti');
     const buktiFile = document.getElementById('bukti-file');
+    // Tambah elemen error
+    let buktiError = document.getElementById('bukti-transfer-error');
+    if (!buktiError && formBukti) {
+        buktiError = document.createElement('div');
+        buktiError.id = 'bukti-transfer-error';
+        buktiError.className = 'text-red-600 font-semibold mt-2';
+        formBukti.parentNode.insertBefore(buktiError, formBukti.nextSibling);
+        buktiError.style.display = 'none';
+    }
 
     if(btnDonasiBebas && inputDonasiBebas && qrisModal && qrisModalClose && qrisNominal) {
         btnDonasiBebas.addEventListener('click', function(e) {
@@ -43,19 +52,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if(formBukti) {
         formBukti.addEventListener('submit', async function(e) {
             e.preventDefault();
+            if (buktiError) { buktiError.style.display = 'none'; buktiError.textContent = ''; }
+            buktiSuccess.classList.add('hidden');
             const formData = new FormData(formBukti);
             // Pastikan nominal dikirim dalam format angka saja
             if (buktiNominal && buktiNominal.value) {
                 formData.set('nominal', buktiNominal.value.replace(/[^\d]/g, ''));
             }
             try {
-                const res = await fetch('/api/bukti-transfer', {
+                const res = await fetch('http://localhost:3000/api/bukti-transfer', {
                     method: 'POST',
                     body: formData
                 });
                 if (res.ok) {
                     buktiSuccess.textContent = 'Bukti berhasil dikirim! Donasi Anda akan segera diverifikasi.';
                     buktiSuccess.classList.remove('hidden');
+                    if (buktiError) { buktiError.style.display = 'none'; buktiError.textContent = ''; }
                     setTimeout(()=>{
                         buktiSuccess.classList.add('hidden');
                         qrisModal.classList.add('hidden');
@@ -65,13 +77,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         if(btnKirimBukti) btnKirimBukti.disabled = true;
                     }, 2000);
                 } else {
-                    const data = await res.json();
-                    buktiSuccess.textContent = data.error || 'Gagal mengirim bukti transfer.';
-                    buktiSuccess.classList.remove('hidden');
+                    let errorMsg = 'Gagal mengirim bukti transfer.';
+                    try {
+                        const data = await res.json();
+                        errorMsg = data.error || errorMsg;
+                    } catch (e) {
+                        // fallback jika bukan json
+                        errorMsg = await res.text() || errorMsg;
+                    }
+                    if (buktiError) {
+                        buktiError.textContent = errorMsg;
+                        buktiError.style.display = 'block';
+                    }
                 }
             } catch (err) {
-                buktiSuccess.textContent = 'Terjadi error koneksi.';
-                buktiSuccess.classList.remove('hidden');
+                if (buktiError) {
+                    buktiError.textContent = 'Terjadi kesalahan koneksi. Silakan cek jaringan/server.';
+                    buktiError.style.display = 'block';
+                }
             }
         });
     }
@@ -494,3 +517,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateProgress();
             }, 500);
         });
+
+// Debug log nominal
+console.log('Nominal diterima dari frontend:', nominal);
+const nominalAngka = parseInt(nominal.replace(/[^\d]/g, ''));
+console.log('Nominal setelah parsing:', nominalAngka);
+
+const donasi = await prisma.donasi.create({
+  data: {
+    nama,
+    nominal: nominalAngka,
+    pesan,
+    bukti: `/bukti-transfer/${fileName}`,
+    status: 'MENUNGGU_VERIFIKASI',
+  },
+});
