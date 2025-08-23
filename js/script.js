@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isNaN(nominal) && nominal > 0) {
                 e.preventDefault();
                 qrisNominal.textContent = nominal.toLocaleString('id-ID', {style:'currency', currency:'IDR'});
-                if (buktiNominal) buktiNominal.value = nominal.toLocaleString('id-ID', {style:'currency', currency:'IDR'});
+                // Set value input nominal di form upload dengan angka murni (tanpa format)
+                if (buktiNominal) buktiNominal.value = nominal;
                 qrisModal.classList.remove('hidden');
             }
         });
@@ -65,17 +66,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: formData
                 });
                 if (res.ok) {
-                    buktiSuccess.textContent = 'Bukti berhasil dikirim! Donasi Anda akan segera diverifikasi.';
-                    buktiSuccess.classList.remove('hidden');
                     if (buktiError) { buktiError.style.display = 'none'; buktiError.textContent = ''; }
-                    setTimeout(()=>{
-                        buktiSuccess.classList.add('hidden');
-                        qrisModal.classList.add('hidden');
-                        formBukti.reset();
-                        formBukti.classList.add('hidden');
-                        if(showUploadForm) showUploadForm.classList.remove('hidden');
-                        if(btnKirimBukti) btnKirimBukti.disabled = true;
-                    }, 2000);
+                    console.log('Swal akan dipanggil');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Bukti berhasil dikirim!',
+                        text: 'Donasi Anda akan segera diverifikasi.',
+                        confirmButtonColor: '#16a34a'
+                    });
+                    qrisModal.classList.add('hidden');
+                    formBukti.reset();
+                    formBukti.classList.add('hidden');
+                    if(showUploadForm) showUploadForm.classList.remove('hidden');
+                    if(btnKirimBukti) btnKirimBukti.disabled = true;
                 } else {
                     let errorMsg = 'Gagal mengirim bukti transfer.';
                     try {
@@ -126,49 +129,63 @@ const DONASI_API = 'http://localhost:3000/api/donasi';
 async function tampilkanDonasiTerbaru() {
     const el = document.getElementById('donatur-terbaru-list');
     if (!el) return;
-    try {
-        const res = await fetch(DONASI_API);
-        const data = await res.json();
-        if (data.success) {
-            if (data.data.length === 0) {
-                el.innerHTML = '<div class="text-center col-span-3 text-gray-400">Belum ada donasi</div>';
-                return;
+    let semuaDonatur = [];
+    let modeSemua = false;
+
+    async function renderList(showAll = false) {
+        try {
+            const res = await fetch(DONASI_API);
+            const data = await res.json();
+            if (data.success) {
+                semuaDonatur = data.data;
+                if (semuaDonatur.length === 0) {
+                    el.innerHTML = '<div class="text-center col-span-3 text-gray-400">Belum ada donasi</div>';
+                    return;
+                }
+                const list = (showAll ? semuaDonatur : semuaDonatur.slice(0, 6)).map((d, i) => {
+                    const colors = [
+                        {bg: 'bg-green-50', text: 'bg-green-500', nominal: 'text-green-600'},
+                        {bg: 'bg-blue-50', text: 'bg-blue-500', nominal: 'text-blue-600'},
+                        {bg: 'bg-purple-50', text: 'bg-purple-500', nominal: 'text-purple-600'},
+                        {bg: 'bg-orange-50', text: 'bg-orange-500', nominal: 'text-orange-600'},
+                        {bg: 'bg-pink-50', text: 'bg-pink-500', nominal: 'text-pink-600'},
+                        {bg: 'bg-indigo-50', text: 'bg-indigo-500', nominal: 'text-indigo-600'},
+                    ];
+                    const color = colors[i % colors.length];
+                    let inisial = (d.nama||'').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
+                    if (!inisial) inisial = 'NN';
+                    const waktu = waktuRelatif(d.waktu);
+                    return `
+                    <div class="flex items-center space-x-4 p-4 ${color.bg} rounded-lg">
+                        <div class="w-12 h-12 ${color.text} rounded-full flex items-center justify-center">
+                            <span class="text-white font-bold">${inisial}</span>
+                        </div>
+                        <div>
+                            <h5 class="font-semibold">${d.nama}</h5>
+                            <p class="${color.nominal} font-bold">Rp ${Number(d.nominal).toLocaleString('id-ID')}</p>
+                            <p class="text-xs text-gray-500">${waktu}</p>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+                el.innerHTML = list;
+                // Tambahkan tombol lihat semua/kecilkan
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'text-center mt-8';
+                btnContainer.innerHTML = `<button id="btn-lihat-semua-donatur" class="text-green-600 hover:text-green-700 font-semibold">${showAll ? 'Kecilkan' : 'Lihat Semua Donatur →'}</button>`;
+                el.parentNode.appendChild(btnContainer);
+                document.getElementById('btn-lihat-semua-donatur').onclick = function() {
+                    document.querySelectorAll('#btn-lihat-semua-donatur').forEach(btn=>btn.remove());
+                    renderList(!showAll);
+                };
+            } else {
+                el.innerHTML = '<div class="col-span-3 text-center text-red-500">Gagal memuat data</div>';
             }
-            el.innerHTML = data.data.slice(0, 6).map((d, i) => {
-                // Pilih warna background dan text secara bergantian
-                const colors = [
-                    {bg: 'bg-green-50', text: 'bg-green-500', nominal: 'text-green-600'},
-                    {bg: 'bg-blue-50', text: 'bg-blue-500', nominal: 'text-blue-600'},
-                    {bg: 'bg-purple-50', text: 'bg-purple-500', nominal: 'text-purple-600'},
-                    {bg: 'bg-orange-50', text: 'bg-orange-500', nominal: 'text-orange-600'},
-                    {bg: 'bg-pink-50', text: 'bg-pink-500', nominal: 'text-pink-600'},
-                    {bg: 'bg-indigo-50', text: 'bg-indigo-500', nominal: 'text-indigo-600'},
-                ];
-                const color = colors[i % colors.length];
-                // Inisial nama
-                let inisial = (d.nama||'').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
-                if (!inisial) inisial = 'NN';
-                // Format waktu (misal: 2 jam yang lalu)
-                const waktu = waktuRelatif(d.waktu);
-                return `
-                <div class="flex items-center space-x-4 p-4 ${color.bg} rounded-lg">
-                    <div class="w-12 h-12 ${color.text} rounded-full flex items-center justify-center">
-                        <span class="text-white font-bold">${inisial}</span>
-                    </div>
-                    <div>
-                        <h5 class="font-semibold">${d.nama}</h5>
-                        <p class="${color.nominal} font-bold">Rp ${Number(d.nominal).toLocaleString('id-ID')}</p>
-                        <p class="text-xs text-gray-500">${waktu}</p>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        } else {
-            el.innerHTML = '<div class="col-span-3 text-center text-red-500">Gagal memuat data</div>';
+        } catch (e) {
+            el.innerHTML = '<div class="col-span-3 text-center text-red-500">Error koneksi</div>';
         }
-    } catch (e) {
-        el.innerHTML = '<div class="col-span-3 text-center text-red-500">Error koneksi</div>';
     }
+    renderList();
 }
 
 // Fungsi untuk menampilkan waktu relatif (misal: 2 jam yang lalu)
@@ -531,4 +548,11 @@ const donasi = await prisma.donasi.create({
     bukti: `/bukti-transfer/${fileName}`,
     status: 'MENUNGGU_VERIFIKASI',
   },
+});
+
+Swal.fire({
+  icon: 'success',
+  title: 'Bukti berhasil dikirim!',
+  text: 'Donasi Anda akan segera diverifikasi.',
+  confirmButtonColor: '#16a34a'
 });
