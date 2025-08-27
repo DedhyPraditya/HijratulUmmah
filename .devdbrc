@@ -1,0 +1,6 @@
+[
+  {
+    "type": "sqlite",
+    "path": "d:\\laragon\\www\\masjid\\be_donasi\\prisma\\dev.db"
+  }
+]
