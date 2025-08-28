@@ -1,4 +1,3 @@
-
 <template>
   <section id="beranda" class="gradient-islamic text-white py-20 islamic-pattern scroll-mt-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -11,13 +10,21 @@
             Mari Bersama Membangun Tempat Wudhu yang Layak
           </h2>
           <p class="text-xl mb-8 opacity-90">
-            Mushollah Hijratul Ummah membutuhkan bantuan Anda untuk membangun fasilitas tempat wudhu yang bersih dan nyaman bagi jamaah. Setiap rupiah yang Anda sumbangkan adalah investasi pahala yang mengalir terus.
+            Mushollah Hijratul Ummah membutuhkan bantuan Anda untuk membangun fasilitas tempat wudhu
+            yang bersih dan nyaman bagi jamaah. Setiap rupiah yang Anda sumbangkan adalah investasi
+            pahala yang mengalir terus.
           </p>
           <div class="flex flex-col sm:flex-row gap-4">
-            <a href="#option" class="bg-white text-green-600 px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-lg">
+            <a
+              href="#option"
+              class="bg-white text-green-600 px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-lg"
+            >
               🤲 Donasi Sekarang
             </a>
-            <a href="#tentang" class="button border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-green-600 transition-colors">
+            <a
+              href="#tentang"
+              class="button border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-green-600 transition-colors"
+            >
               📖 Pelajari Lebih Lanjut
             </a>
           </div>
@@ -26,10 +33,15 @@
           <div class="bg-white rounded-2xl p-8 card-shadow">
             <div class="text-6xl mb-4">🕌</div>
             <h3 class="text-2xl font-bold text-gray-900 mb-4">Target Donasi</h3>
-            <div class="text-4xl font-bold text-green-600 mb-2">{{ loading ? 'Memuat...' : formatRupiah(target) }}</div>
+            <div class="text-4xl font-bold text-green-600 mb-2">
+              {{ loading ? 'Memuat...' : formatRupiah(target) }}
+            </div>
             <div class="text-gray-600 mb-6">Untuk pembangunan tempat wudhu lengkap</div>
             <div class="bg-gray-200 rounded-full h-4 mb-4">
-              <div class="progress-bar h-4 rounded-full bg-green-500" :style="{ width: persen + '%' }"></div>
+              <div
+                class="progress-bar h-4 rounded-full bg-green-500"
+                :style="{ width: persen + '%' }"
+              ></div>
             </div>
             <div class="flex justify-between text-sm text-gray-600">
               <span>Terkumpul: {{ loading ? 'Memuat...' : formatRupiah(terkumpul) }}</span>
@@ -43,36 +55,39 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted } from 'vue'
 
-const target = ref(0);
-const terkumpul = ref(0);
-const persen = ref(0);
-const loading = ref(true);
+// Ambil base URL dari environment variable VITE_API_BASE_URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+
+const target = ref(0)
+const terkumpul = ref(0)
+const persen = ref(0)
+const loading = ref(true)
 
 function formatRupiah(val) {
-  if (!val) return 'Rp 0';
-  return 'Rp ' + val.toLocaleString('id-ID');
+  if (!val) return 'Rp 0'
+  return 'Rp ' + val.toLocaleString('id-ID')
 }
 
 async function fetchStatistik() {
-  loading.value = true;
+  loading.value = true
   try {
-    const res = await fetch('http://localhost:3000/api/statistik');
-    const data = await res.json();
-    if (!data.success) return;
-    target.value = data.data.target;
-    terkumpul.value = data.data.terkumpul;
-    persen.value = data.data.persen;
+    const res = await fetch(`${API_BASE_URL}/api/statistik`)
+    const data = await res.json()
+    if (!data.success) return
+    target.value = data.data.target
+    terkumpul.value = data.data.terkumpul
+    persen.value = data.data.persen
   } catch {
     // ignore error
   }
-  loading.value = false;
+  loading.value = false
 }
 
 onMounted(() => {
-  fetchStatistik();
-});
+  fetchStatistik()
+})
 </script>
 
 <style scoped>
